@@ -2,17 +2,14 @@ package com.example.myteststreams
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
-import android.util.Log
 import android.widget.Toast
 import androidx.core.view.isVisible
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.example.myteststreams.databinding.ActivityMainBinding
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,31 +21,38 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
         binding.buttonLoad.setOnClickListener {
+            binding.progress.isVisible = true
+            binding.buttonLoad.isEnabled = false
+            val deferredCity: Deferred<String> = lifecycleScope.async {
+                val city = loadCity()
+                binding.tvLocation.text = city
+                city
+            }
+            val deferredTemp: Deferred<Int> = lifecycleScope.async {
+                val temp = loadTemperature()
+                binding.tvTemperature.text = temp.toString()
+                temp
+            }
             lifecycleScope.launch {
-                loadData()
+
+                val city = deferredCity.await()
+                val temp = deferredTemp.await()
+                Toast.makeText(this@MainActivity, "City: $city Temp: $temp", Toast.LENGTH_SHORT)
+                    .show()
+                binding.progress.isVisible = false
+                binding.buttonLoad.isEnabled = true
+
             }
         }
 
     }
 
     private suspend fun loadData() {
-        binding.progress.isVisible = true
-        binding.buttonLoad.isEnabled = false
-        val city = loadCity()
-        binding.tvLocation.text = city
-        val temp = loadTemperature(city)
-        binding.tvTemperature.text = temp.toString()
-        binding.progress.isVisible = false
-        binding.buttonLoad.isEnabled = true
+
 
     }
 
-    private suspend fun loadTemperature(city: String): Int {
-        Toast.makeText(
-            this,
-            getString(R.string.loading_temperature_toast, city),
-            Toast.LENGTH_SHORT
-        ).show()
+    private suspend fun loadTemperature(): Int {
         delay(5000)
         return 17
     }
